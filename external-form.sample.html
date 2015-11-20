@@ -1,0 +1,252 @@
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+        <title>Stripe Sample Form</title>
+
+        <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jquery.validate/1.14.0/jquery.validate.min.js"></script>
+        <script type="text/javascript" src="https://js.stripe.com/v1/"></script>
+
+        <script type="text/javascript">
+        	validatePedalwagonAPIData = function(data) {
+        		console.log("validating... ", data);
+        		if ( !stringExists(data.delivery) )  { return false; }
+        		if ( !(data.delivery == "snailmail" || data.delivery == "email") ) { return false; }
+        		if (data.delivery == "snailmail") {
+        			if ( !stringExists(data.address) )  { return false; }
+        			if ( !stringExists(data.city) )  { return false; }
+        			if ( !stringExists(data.state) )  { return false; }
+        			if ( !stringExists(data.zip) )  { return false; }
+        		}
+        		if ( !stringExists(data.email) )  { return false; }
+        		if ( !validateEmail(data.email) )  { return false; }
+        		if ( !stringExists(data.name) )  { return false; }
+        		if ( !stringExists(data.stripeToken) )  { return false; }
+        		if ( !stringExists(data.coupon) )  { return false; }
+        		return true;
+        	}
+
+        	stringExists = function (str) {
+        		if(((typeof str != "undefined") &&
+				    (typeof str.valueOf() == "string")) &&
+				    (str.length > 0)) {
+        				return true;
+					} else {return false;}
+
+        	}
+
+			function validateEmail(email) {
+			    var re = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
+			    return re.test(email);
+			}
+        </script>
+        <script type="text/javascript">
+			$(document).ready(function() {
+
+			  $('#pw-form').submit(function (e) {
+			  	console.log("submit");
+			  	button = $("button[type=submit]")
+			  	button.attr("disabled", true);
+			  	if(!$("#pw-form").valid()) {
+			  		return button.attr("disabled", false);
+			  	}
+			    Stripe.setPublishableKey("pk_test_j3CAs3kstx0osqdoKwv655dp");
+			    Stripe.createToken({
+			      number: $('.card-number').val(),
+			      cvc: $('.card-cvc').val(),
+			      exp_month: $('.card-expiry-month').val(), 
+			      exp_year: $('.card-expiry-year').val()
+			    }, function(status, response) {
+			    
+			      if (response.error) {
+			      	console.error(response);
+			      	button.attr("disabled", false);
+			      	$("#payment-errors").html((response.error.message)).fadeIn();
+			      } else {
+			        // token contains id, last4, and card type
+			        var token = response['id'];
+			        console.log(response);
+			        console.log('Token: ' + token);
+
+					data = {
+						address: $('#address').val(),
+						city: $('#city').val(),
+						state: $('#state').val(),
+						zip: $('#zip').val(),
+						email: $('#email').val(),
+						delivery: $("[name=delivery]:checked").val(),
+						coupon: $('[name=coupon]:checked').val(),
+						stripeToken: token,
+						name: $('#name').val()
+					}
+
+
+					if (!validatePedalwagonAPIData(data)) {
+						e.preventDefault();
+						$("#payment-errors").html("Invalid form. Please double check.").fadeOut().fadeIn();
+						button.attr("disabled", false);
+						return console.log("invalid data");
+					} else {
+						$("#payment-errors").fadeOut();
+					}
+
+					$.ajax({
+					  method: "POST",
+					  url: "http://localhost:3000/discounts/create",
+					  dataType: "json",
+					  data: data
+					})
+					  .done(function() {
+					    console.log( "api success" );
+					  })
+					  .fail(function(e) {
+					  	console.log(e);
+					  	button.attr("disabled", false);
+					    console.log( "api error" );
+					    $("#payment-errors").html("Something went wrong. Please send us an email at tom@pedalwagon.com.").fadeOut().fadeIn();
+					  })
+					  .always(function() {
+					    console.log( "api complete" );
+					  });
+			      }
+			    });
+
+			    return false;
+			  });
+
+			});
+        </script>
+
+
+		<script>
+			$(document).ready(function() {
+				$("#pw-form").validate({
+					rules: {
+						// these are required only when snailmail is checked
+						"address": { required: '#delivery_snailmail:checked' },
+						"city": { required: '#delivery_snailmail:checked' },
+						"state": { required: '#delivery_snailmail:checked' },
+						"zip": { required: '#delivery_snailmail:checked' }
+					}
+				});
+			});
+		</script>
+		<style>
+			label.error, span.error {
+				display:none;
+				color: red;
+			}
+		</style>
+    </head>
+    <body>
+
+        <h1>Stripe Form</h1>
+    
+        <form id="pw-form">
+
+            <div class="form-row">
+                <label for="name" class="stripeLabel">Your Name</label>
+                <input type="text" id="name" name="name" class="required" />
+            </div>            
+    
+            <div class="form-row">
+                <label for="email">E-mail Address</label>
+                <input type="text" id="email" name="email" class="required" />
+            </div>          
+
+            <div class="form-row">
+                <label for="address">Address</label>
+                <input type="text" id="address" name="address" class="" />
+            </div>
+
+            <div class="form-row">
+                <label for="city">City</label>
+                <input type="text" id="city" name="city" class="" />
+            </div>
+
+            <div class="form-row">
+                <label for="state">State</label>
+                <input type="text" id="state" name="state" class="" />
+            </div>
+
+            <div class="form-row">
+                <label for="zip">Zip</label>
+                <input type="text" id="zip" name="zip" class="" />
+            </div>
+
+			<div class="form-row">
+				<fieldset>
+					<legend>Delivery Method</legend>
+					<label for="delivery_email">
+						<input type="radio" id="delivery_email" value="email" name="delivery" required>Email
+					</label>
+					<label for="delivery_snailmail">
+						<input type="radio" id="delivery_snailmail" value="snailmail" name="delivery" required>Mail
+					</label>
+					<label for="delivery" class="error">Please select how you would like to receive your gift certificate</label>
+				</fieldset>
+			</div>
+
+			<div class="form-row">
+				<fieldset>
+					<legend>Which coupon</legend>
+					<label for="255">
+						<input type="radio" id="255" value="564f3a6c926705c73c8b45f0" name="coupon" required>255
+					</label>
+					<label for="135">
+						<input type="radio" id="135" value="564f3a6392670586418b45e7" name="coupon" required>135
+					</label>
+					<label for="coupon" class="error">Please select how you would like to receive your gift certificate</label>
+				</fieldset>
+			</div>
+    
+            <div class="form-row">
+                <label>Card Number</label>
+                <input type="text" maxlength="20" autocomplete="off" class="card-number stripe-sensitive required" />
+            </div>
+            
+            <div class="form-row">
+                <label>CVC</label>
+                <input type="text" maxlength="4" autocomplete="off" class="card-cvc stripe-sensitive required"/>
+            </div>
+            
+            <div class="form-row">
+                <label>Expiration</label>
+                <div class="expiry-wrapper">
+                    <select class="card-expiry-month stripe-sensitive required">
+                    	<option value="1">1</option>
+                    	<option value="2">2</option>
+                    	<option value="3">3</option>
+                    	<option value="4">4</option>
+                    	<option value="5">5</option>
+                    	<option value="6">6</option>
+                    	<option value="7">7</option>
+                    	<option value="8">8</option>
+                    	<option value="9">9</option>
+                    	<option value="10">10</option>
+                    	<option value="11">11</option>
+                    	<option value="12">12</option>
+                    </select>
+                    <span> / </span>
+                    <select class="card-expiry-year stripe-sensitive required">
+                    	<option value="2015">2015</option>
+                    	<option value="2016">2016</option>
+                    	<option value="2017">2017</option>
+                    	<option value="2018">2018</option>
+                    	<option value="2019">2019</option>
+                    	<option value="2020">2020</option>
+                    	<option value="2021">2021</option>
+                    	<option value="2022">2022</option>
+                    	<option value="2023">2023</option>
+                    	<option value="2024">2024</option>
+                    	<option value="2025">2025</option>
+                    	<option value="2026">2026</option>
+                    </select>
+                </div>
+            </div>
+
+            <button type="submit" name="submit-button">Submit</button>
+            <span id="payment-errors" class="error"></span>
+        </form>
+    </body>
+</html>
