@@ -59,16 +59,16 @@ app.use bodyParser()
 routes = require './routes'
 routes(app)
 
-  if !process.env.STRIPE_API_KEY or !process.env.MANDRILL_API_KEY or !process.env.LOB_API_KEY or !process.env.XOLA_API_KEY
-    console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.log "All environment variables are not set!!"
-    console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-  else
-    console.log "all environment variables are good to go!"
+if !process.env.STRIPE_API_KEY or !process.env.MANDRILL_API_KEY or !process.env.LOB_API_KEY or !process.env.XOLA_API_KEY
+  console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
+  console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
+  console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
+  console.log "All environment variables are not set!!"
+  console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
+  console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
+  console.log "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
+else
+  console.log "all environment variables are good to go!"
 
 
 # Export application object

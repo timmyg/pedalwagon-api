@@ -2,14 +2,6 @@
 # Sets application config parameters depending on `env` name
 exports.setEnvironment = (env) ->
   console.log "set app environment: #{env}"
-  if !process.env.STRIPE_API_KEY or !process.env.MANDRILL_API_KEY or !process.env.LOB_API_KEY or !process.env.XOLA_API_KEY
-    console.error "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.error "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.error "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.error "All environment variables are not set!!"
-    console.error "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.error "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
-    console.error "/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\/\\"
   switch(env)
     when "development"
       exports.DEBUG_LOG = true
