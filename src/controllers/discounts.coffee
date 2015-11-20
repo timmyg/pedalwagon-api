@@ -11,7 +11,11 @@ module.exports =
 	# Lists all users
 	create: (req, res) ->
 		data =
-			address: req.body.address
+			address: 
+				street: req.body.street
+				city: req.body.city
+				state: req.body.state
+				zip: req.body.zip
 			email: req.body.email
 			delivery: req.body.delivery
 			couponId: req.body.coupon
@@ -23,20 +27,26 @@ module.exports =
 			chargeCard data.email, data.stripeToken, result.amount, data, (err, charge) ->
 				generatedCouponCode = getRandomCode()
 				createCoupon data.couponId, generatedCouponCode, (err, result) ->
-					sendCouponCode templateSlug, data.delivery, generatedCouponCode, data.email, data.address, (err, result) ->
-						result =
-							confirmation: result
+					sendCouponCode data.mandrillTemplateSlug, data.delivery, generatedCouponCode, data.email, data.address, data.name, (err, result) ->
+						data =
+							confirmation: result.id
+							couponId: data.couponId
 							couponCode: generatedCouponCode
-						updateCharge charge.id, result, (err, result) ->
+							snailmailImg: result.url
+							snailmailTrackingNumber: result.tracking["tracking_number"]
+							snailmailCarrier: result.carrier
+							name: data.name
+							email: data.email
+						updateCharge charge.id, data, (err, result) ->
 							res.send {message: "good to go"}
 							res.statusCode = 201
 
-sendCouponCode = (templateSlug, deliveryMethod, generatedCouponCode, email, address, callback) ->
+sendCouponCode = (templateSlug, deliveryMethod, generatedCouponCode, email, address, name, callback) ->
 	if deliveryMethod is "email"
 		sendEmail templateSlug, generatedCouponCode, email, (err, result) ->
 			return callback err, result
 	else if deliveryMethod is "snailmail"
-		sendSnailMail generatedCouponCode, address, (err, result) ->
+		sendSnailMail templateSlug, generatedCouponCode, email, address, name, (err, result) ->
 			return callback err, result
 	else
 		return {message: "no delivery method: #{deliveryMethod}"}
@@ -53,10 +63,15 @@ getCouponAmount = (couponId, callback) ->
 		return callback err, body
 
 chargeCard = (email, token, amount, metadata, callback) ->
+	# stripe can save multi-level metadata, so remove
+	# metadata.form = JSON.stringify metadata
+	# metadataStripe = metadata
+	# metadataStripe.form = JSON.stringify metadata
+	# delete metadataStripe.address
 	Stripe.charges.create
 		amount: "#{amount}00"
 		currency: 'usd'
-		metadata: metadata
+		metadata: { form : JSON.stringify(metadata).substring(0, 500) }
 		source: token
 	, (err, charge) ->
 		console.error err if err
@@ -111,58 +126,60 @@ sendEmail = (templateSlug, couponCode, email, callback) ->
 
 getRenderedHTMLFromMandrill = (templateSlug, couponCode, email, callback) ->
 	templateContent = []
-	message = 
-		"to": [ {
-			"email": email
-			"type": "to"
-		} ]
-		"merge": true,
-		"merge_vars": [
-			{
-				"rcpt": email
-				"vars": [
+	# message = 
+	# 	"to": [ {
+	# 		"email": email
+	# 		"type": "to"
+	# 	} ]
+	# 	"merge": true,
+	mergeVars = [
+			# {
+			# 	"rcpt": email
+			# 	"vars": [
 					{
 						"name": "couponcode",
 						"content": couponCode
 					}
-				]
-			}
+				# ]
+			# }
 		]
 
 	Mandrill.templates.render {
 		'template_name': templateSlug
 		'template_content': templateContent
-		'message': message
+		'merge_vars': mergeVars
 	}, ((result) ->
 		return callback null, result["html"]
 	), (e) ->
-		console.error e if e
+		console.error "mandrill tempalate render error", e if e
 		return callback {message: "A mandrill error occurred: #{e.name} - #{e.message}"}
 
 
 
-sendSnailMail = (couponCode, address, callback) ->
-	Lob.letters.create
-		description: 'Pedal Wagon Deal'
-		to:
-			name: 'Harry Zhang'
-			address_line1: '123 Test Street'
-			address_city: 'Mountain View'
-			address_state: 'CA'
-			address_zip: '94041'
-			address_country: 'US'
-		from:
-			name: 'Pedal Wagon'
-			address_line1: '1819 Walker Street'
-			address_city: 'Cincinnati'
-			address_state: 'OH'
-			address_zip: '45202'
-			address_country: 'US'
-		file: "<html style='padding-top: 3in; margin: .5in;'>Code is #{couponCode}</html>"
-		data: name: 'Harry'
-		color: false
-	, (err, res) ->
-		return callback err, res.id
+sendSnailMail = (templateSlug, couponCode, email, address, name, callback) ->
+	getRenderedHTMLFromMandrill templateSlug, couponCode, email, (err, html) ->
+		Lob.letters.create
+			description: 'Pedal Wagon Deal'
+			to:
+				name: name
+				address_line1: address.street
+				address_city: address.city
+				address_state: address.state
+				address_zip: address.zip
+				address_country: 'US'
+			from:
+				name: 'Pedal Wagon'
+				address_line1: '1819 Walker Street'
+				address_city: 'Cincinnati'
+				address_state: 'OH'
+				address_zip: '45202'
+				address_country: 'US'
+			file: html
+			# data: name: 'Harry'
+			color: false
+		, (err, res) ->
+			console.error "lob error", err if err
+			return callback err, res
 
 updateCharge = (chargeId, confirmationData, callback) ->
 	Stripe.charges.update chargeId, { metadata: confirmationData }, (err, result) ->

@@ -10,17 +10,19 @@
         <script type="text/javascript">
 
         	// this must be set
-        	MANDRILL_TEMPLATE_SLUG="holiday-2015"
+        	MANDRILL_TEMPLATE_SLUG="gift-certificate-code"
 
         	validatePedalwagonAPIData = function(data) {
         		console.log("validating... ", data);
         		if ( !stringExists(data.delivery) )  { return false; }
         		if ( !(data.delivery == "snailmail" || data.delivery == "email") ) { return false; }
         		if (data.delivery == "snailmail") {
-        			if ( !stringExists(data.address) )  { return false; }
+        			if ( !stringExists(data.street) )  { return false; }
         			if ( !stringExists(data.city) )  { return false; }
         			if ( !stringExists(data.state) )  { return false; }
         			if ( !stringExists(data.zip) )  { return false; }
+        			if ( !validateState(data.state) )  { return false; }
+        			if ( !validateZip(data.zip) )  { return false; }
         		}
         		if ( !stringExists(data.email) )  { return false; }
         		if ( !validateEmail(data.email) )  { return false; }
@@ -39,6 +41,14 @@
 					} else {return false;}
 
         	}
+
+			function validateZip(zip) {
+			    return /(^\d{5}$)|(^\d{5}-\d{4}$)/.test(zip);
+			}
+
+			function validateState(state) {
+			    return /^(?:A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])*$/i.test(state);
+			}
 
 			function validateEmail(email) {
 			    var re = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
@@ -74,7 +84,7 @@
 			        console.log('Token: ' + token);
 
 					data = {
-						address: $('#address').val(),
+						street: $('#street').val(),
 						city: $('#city').val(),
 						state: $('#state').val(),
 						zip: $('#zip').val(),
@@ -89,11 +99,11 @@
 
 					if (!validatePedalwagonAPIData(data)) {
 						e.preventDefault();
-						$("#payment-errors").html("Invalid form. Please double check.").fadeOut().fadeIn();
+						$("#payment-errors").html("Invalid form. Please double check.").hide().fadeIn();
 						button.attr("disabled", false);
 						return console.log("invalid data");
 					} else {
-						$("#payment-errors").fadeOut();
+						$("#payment-errors").hide();
 					}
 
 					$.ajax({
@@ -109,7 +119,7 @@
 					  	console.log(e);
 					  	button.attr("disabled", false);
 					    console.log( "api error" );
-					    $("#payment-errors").html("Something went wrong. Please send us an email at tom@pedalwagon.com.").fadeOut().fadeIn();
+					    $("#payment-errors").html("Something went wrong. Please send us an email at tom@pedalwagon.com.").hide().fadeIn();
 					  })
 					  .always(function() {
 					    console.log( "api complete" );
@@ -129,7 +139,7 @@
 				$("#pw-form").validate({
 					rules: {
 						// these are required only when snailmail is checked
-						"address": { required: '#delivery_snailmail:checked' },
+						"street": { required: '#delivery_snailmail:checked' },
 						"city": { required: '#delivery_snailmail:checked' },
 						"state": { required: '#delivery_snailmail:checked' },
 						"zip": { required: '#delivery_snailmail:checked' }
@@ -161,8 +171,8 @@
             </div>          
 
             <div class="form-row">
-                <label for="address">Address</label>
-                <input type="text" id="address" name="address" class="" />
+                <label for="street">Street</label>
+                <input type="text" id="street" name="street" class="" />
             </div>
 
             <div class="form-row">
