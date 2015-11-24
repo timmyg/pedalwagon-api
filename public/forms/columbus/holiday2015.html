@@ -97,7 +97,7 @@
 						coupon: $("select[name=coupon]").val(),
 						stripeToken: token,
 						name: $('#name').val(),
-						numSeats: $('select[name=coupon]').find(":selected").data("total")
+						numSeats: $('select[name=coupon]').find(":selected").data("seats").toString()
 						// mandrillTemplateSlug: MANDRILL_TEMPLATE_SLUG
 					}
 
