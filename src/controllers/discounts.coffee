@@ -208,6 +208,7 @@ sendSnailMail = (numSeats, couponCode, email, address, name, callback) ->
 				address_country: 'US'
 			file: html
 			color: true
+			template: false
 		, (err, res) ->
 			console.error "lob error", err if err
 			console.log "lob:", res if res
