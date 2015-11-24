@@ -21,13 +21,14 @@ module.exports =
 			couponId: req.body.coupon
 			stripeToken: req.body.stripeToken
 			name: req.body.name
+			numSeats: req.body.numSeats
 			# mandrillTemplateSlug: req.body.mandrillTemplateSlug
 		getCouponAmount data.couponId, (err, result) ->
 			data.couponName = result.name
 			chargeCard data.email, data.stripeToken, result.amount, data, (err, charge) ->
 				generatedCouponCode = getRandomCode()
 				createCoupon data.couponId, generatedCouponCode, (err, result) ->
-					sendCouponCode data.delivery, generatedCouponCode, data.email, data.address, data.name, (err, result) ->
+					sendCouponCode data.delivery, data.numSeats, generatedCouponCode, data.email, data.address, data.name, (err, result) ->
 						metadata =
 							couponId: data.couponId
 							couponCode: generatedCouponCode
@@ -45,12 +46,12 @@ module.exports =
 							res.send {message: "good to go"}
 							res.statusCode = 201
 
-sendCouponCode = (deliveryMethod, generatedCouponCode, email, address, name, callback) ->
+sendCouponCode = (deliveryMethod, numSeats, generatedCouponCode, email, address, name, callback) ->
 	if deliveryMethod is "email"
-		sendCouponEmail generatedCouponCode, email, (err, result) ->
+		sendCouponEmail numSeats, generatedCouponCode, email, (err, result) ->
 			return callback err, result
 	else if deliveryMethod is "snailmail"
-		sendSnailMail generatedCouponCode, email, address, name, (err, result) ->
+		sendSnailMail numSeats, generatedCouponCode, email, address, name, (err, result) ->
 			return callback err, result
 	else
 		return {message: "no delivery method: #{deliveryMethod}"}
@@ -91,7 +92,7 @@ createCoupon = (couponId, generatedCouponCode, callback) ->
 		console.error err if err
 		return callback err, body
 
-sendCouponEmail = (couponCode, email, callback) ->
+sendCouponEmail = (numSeats, couponCode, email, callback) ->
 	# return callback null, null
 	templateContent = []
 	message = 
@@ -107,6 +108,10 @@ sendCouponEmail = (couponCode, email, callback) ->
 					{
 						"name": "couponcode",
 						"content": couponCode
+					}
+					{
+						"name": "numberofseats",
+						"content": numSeats
 					}
 				]
 			}
@@ -158,12 +163,16 @@ sendTrackingEmail = ( carrier, trackingNumber, email, callback) ->
 		console.error e if e
 		return callback {message: "A mandrill error occurred: #{e.name} - #{e.message}"}
 
-getRenderedHTMLFromMandrill = (couponCode, email, callback) ->
+getRenderedHTMLFromMandrill = (numSeats, couponCode, email, callback) ->
 	templateContent = []
 	mergeVars = [
 		{
 			"name": "couponcode",
 			"content": couponCode
+		}
+		{
+			"name": "numberofseats",
+			"content": numSeats
 		}
 	]
 
@@ -179,8 +188,8 @@ getRenderedHTMLFromMandrill = (couponCode, email, callback) ->
 
 
 
-sendSnailMail = (couponCode, email, address, name, callback) ->
-	getRenderedHTMLFromMandrill couponCode, email, (err, html) ->
+sendSnailMail = (numSeats, couponCode, email, address, name, callback) ->
+	getRenderedHTMLFromMandrill numSeats, couponCode, email, (err, html) ->
 		Lob.letters.create
 			description: 'Pedal Wagon Deal'
 			to:

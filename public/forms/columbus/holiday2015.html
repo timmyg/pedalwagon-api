@@ -1,7 +1,7 @@
 <html lang="en">
     <head>
         <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
-        <title>Pedal Wagon Checkout Form</title>
+        <title>Pedal Wagon Checkout</title>
 
         <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
         <script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jquery.validate/1.14.0/jquery.validate.min.js"></script>
@@ -31,6 +31,7 @@
         		if ( !stringExists(data.name) )  { return false; }
         		if ( !stringExists(data.stripeToken) )  { return false; }
         		if ( !stringExists(data.coupon) )  { return false; }
+        		if ( !stringExists(data.numSeats) )  { return false; }
         		// if ( !stringExists(data.mandrillTemplateSlug) )  { return false; }
         		return true;
         	}
@@ -96,6 +97,7 @@
 						coupon: $("select[name=coupon]").val(),
 						stripeToken: token,
 						name: $('#name').val(),
+						numSeats: $('select[name=coupon]').find(":selected").data("total")
 						// mandrillTemplateSlug: MANDRILL_TEMPLATE_SLUG
 					}
 
@@ -263,8 +265,8 @@
 		                <div class="col-xs-6">
 		                    <select name="coupon" class="form-control required">
 		                    	<option value="">-- Gift Certificate Amount --</option>
-		                    	<option data-total="255" value="564f3a6c926705c73c8b45f0">Full Bike - 15 seats - $255 (Regularly $395)</option>
-		                    	<option data-total="155" value="564f3a6392670586418b45e7">Half Bike - 8 seats - $155 (Regularly $240)</option>
+		                    	<option data-total="255" data-seats="15" value="564f3a6c926705c73c8b45f0">Full Bike - 15 seats - $255 (Regularly $395)</option>
+		                    	<option data-total="155" data-seats="8" value="564f3a6392670586418b45e7">Half Bike - 8 seats - $155 (Regularly $240)</option>
 		                    </select>
 		                </div>
 		            </div>
