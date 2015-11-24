@@ -151,6 +151,9 @@
 				// 		"zip": { required: '#snailmail:checked' }
 				// 	}
 				// });
+				// clear form
+				$("select, input").val("")
+
 				if (document.location.hostname == "localhost") {
 					console.log("pointing to pw localhost api")
 					window.apiHost = "http://localhost:3000/discounts/create"
