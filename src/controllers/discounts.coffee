@@ -21,32 +21,36 @@ module.exports =
 			couponId: req.body.coupon
 			stripeToken: req.body.stripeToken
 			name: req.body.name
-			mandrillTemplateSlug: req.body.mandrillTemplateSlug
+			# mandrillTemplateSlug: req.body.mandrillTemplateSlug
 		getCouponAmount data.couponId, (err, result) ->
 			data.couponName = result.name
 			chargeCard data.email, data.stripeToken, result.amount, data, (err, charge) ->
 				generatedCouponCode = getRandomCode()
 				createCoupon data.couponId, generatedCouponCode, (err, result) ->
-					sendCouponCode data.mandrillTemplateSlug, data.delivery, generatedCouponCode, data.email, data.address, data.name, (err, result) ->
-						data =
-							confirmation: result.id
+					sendCouponCode data.delivery, generatedCouponCode, data.email, data.address, data.name, (err, result) ->
+						metadata =
 							couponId: data.couponId
 							couponCode: generatedCouponCode
-							snailmailImg: result.url
-							snailmailTrackingNumber: result.tracking["tracking_number"]
-							snailmailCarrier: result.carrier
 							name: data.name
 							email: data.email
-						updateCharge charge.id, data, (err, result) ->
+						if data.delivery is "snailmail"
+							metadata.snailmailImg = result.url
+							metadata.snailmailCarrier = result.tracking.carrier if result.tracking
+							metadata.snailmailtrackingNumber = result.tracking["tracking_number"] if result.tracking
+						else if data.delivery is "email"
+							metadata.emailConfirmation = result["_id"]
+							metadata.emailStatus = result.status
+
+						updateCharge charge.id, metadata, (err, result) ->
 							res.send {message: "good to go"}
 							res.statusCode = 201
 
-sendCouponCode = (templateSlug, deliveryMethod, generatedCouponCode, email, address, name, callback) ->
+sendCouponCode = (deliveryMethod, generatedCouponCode, email, address, name, callback) ->
 	if deliveryMethod is "email"
-		sendEmail templateSlug, generatedCouponCode, email, (err, result) ->
+		sendCouponEmail generatedCouponCode, email, (err, result) ->
 			return callback err, result
 	else if deliveryMethod is "snailmail"
-		sendSnailMail templateSlug, generatedCouponCode, email, address, name, (err, result) ->
+		sendSnailMail generatedCouponCode, email, address, name, (err, result) ->
 			return callback err, result
 	else
 		return {message: "no delivery method: #{deliveryMethod}"}
@@ -63,11 +67,6 @@ getCouponAmount = (couponId, callback) ->
 		return callback err, body
 
 chargeCard = (email, token, amount, metadata, callback) ->
-	# stripe can save multi-level metadata, so remove
-	# metadata.form = JSON.stringify metadata
-	# metadataStripe = metadata
-	# metadataStripe.form = JSON.stringify metadata
-	# delete metadataStripe.address
 	Stripe.charges.create
 		amount: "#{amount}00"
 		currency: 'usd'
@@ -92,9 +91,8 @@ createCoupon = (couponId, generatedCouponCode, callback) ->
 		console.error err if err
 		return callback err, body
 
-sendEmail = (templateSlug, couponCode, email, callback) ->
+sendCouponEmail = (couponCode, email, callback) ->
 	# return callback null, null
-	templateName = templateSlug
 	templateContent = []
 	message = 
 		"to": [ {
@@ -113,39 +111,64 @@ sendEmail = (templateSlug, couponCode, email, callback) ->
 				]
 			}
 		]
-
+	console.log "coupon", templateContent, message
 	Mandrill.messages.sendTemplate {
-		'template_name': templateName
+		'template_name': 'gift-certificate-code'
 		'template_content': templateContent
 		'message': message
 	}, ((result) ->
-		return callback null, result[0]["_id"]
+		return callback null, result[0]
 	), (e) ->
 		console.error e if e
 		return callback {message: "A mandrill error occurred: #{e.name} - #{e.message}"}
 
-getRenderedHTMLFromMandrill = (templateSlug, couponCode, email, callback) ->
+sendTrackingEmail = ( carrier, trackingNumber, email, callback) ->
+	# return callback null, null
+	templateName = 'tracking'
 	templateContent = []
-	# message = 
-	# 	"to": [ {
-	# 		"email": email
-	# 		"type": "to"
-	# 	} ]
-	# 	"merge": true,
-	mergeVars = [
-			# {
-			# 	"rcpt": email
-			# 	"vars": [
+	message = 
+		"to": [ {
+			"email": email
+			"type": "to"
+		} ]
+		"merge": true,
+		"merge_vars": [
+			{
+				"rcpt": email
+				"vars": [
 					{
-						"name": "couponcode",
-						"content": couponCode
+						"name": "trackingnumber",
+						"content": trackingNumber
 					}
-				# ]
-			# }
+					{
+						"name": "carrier",
+						"content": carrier
+					}
+				]
+			}
 		]
+	console.log "tracking", templateContent, message
+	Mandrill.messages.sendTemplate {
+		'template_name': 'tracking'
+		'template_content': templateContent
+		'message': message
+	}, ((result) ->
+		return callback null, result[0]
+	), (e) ->
+		console.error e if e
+		return callback {message: "A mandrill error occurred: #{e.name} - #{e.message}"}
+
+getRenderedHTMLFromMandrill = (couponCode, email, callback) ->
+	templateContent = []
+	mergeVars = [
+		{
+			"name": "couponcode",
+			"content": couponCode
+		}
+	]
 
 	Mandrill.templates.render {
-		'template_name': templateSlug
+		'template_name': 'gift-certificate-code'
 		'template_content': templateContent
 		'merge_vars': mergeVars
 	}, ((result) ->
@@ -156,8 +179,8 @@ getRenderedHTMLFromMandrill = (templateSlug, couponCode, email, callback) ->
 
 
 
-sendSnailMail = (templateSlug, couponCode, email, address, name, callback) ->
-	getRenderedHTMLFromMandrill templateSlug, couponCode, email, (err, html) ->
+sendSnailMail = (couponCode, email, address, name, callback) ->
+	getRenderedHTMLFromMandrill couponCode, email, (err, html) ->
 		Lob.letters.create
 			description: 'Pedal Wagon Deal'
 			to:
@@ -169,16 +192,18 @@ sendSnailMail = (templateSlug, couponCode, email, address, name, callback) ->
 				address_country: 'US'
 			from:
 				name: 'Pedal Wagon'
-				address_line1: '1819 Walker Street'
+				address_line1: '1126 Walnut St.'
 				address_city: 'Cincinnati'
 				address_state: 'OH'
 				address_zip: '45202'
 				address_country: 'US'
 			file: html
-			# data: name: 'Harry'
-			color: false
+			color: true
 		, (err, res) ->
 			console.error "lob error", err if err
+			console.log "lob:", res if res
+			if res.tracking and res.tracking.carrier and res.tracking["tracking_number"]
+				sendTrackingEmail res.tracking.carrier, res.tracking["tracking_number"], email, (err, result) ->
 			return callback err, res
 
 updateCharge = (chargeId, confirmationData, callback) ->
