@@ -29,10 +29,10 @@ else
 # Add Connect Assets.
 app.use assets()
 # Set the public folder as static assets.
-# app.use express.static(process.cwd() + '/public')
-process.env.PWD = process.cwd()
+app.use express.static(process.cwd() + '/public')
+# process.env.PWD = process.cwd()
 # app.use(express.static(process.env.PWD + '/public'));
-app.use( '/public/forms', express.static(__dirname + '/public/forms') );
+# app.use( '/public/forms', express.static(__dirname + '/public/forms') );
 
 app.use (req, res, next) ->
 	res.header 'Access-Control-Allow-Origin', '*'
