@@ -30,6 +30,7 @@ else
 app.use assets()
 # Set the public folder as static assets.
 app.use express.static(process.cwd() + '/public')
+# app.use express.static(path.join(process.env.PWD, 'public'))
 # process.env.PWD = process.cwd()
 # app.use(express.static(process.env.PWD + '/public'));
 # app.use( '/public/forms', express.static(__dirname + '/public/forms') );
