@@ -1,0 +1,356 @@
+<html lang="en">
+    <head>
+        <meta http-equiv="Content-type" content="text/html; charset=utf-8" />
+        <title>Pedal Wagon Checkout</title>
+
+        <script type="text/javascript" src="//ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
+        <script type="text/javascript" src="//ajax.aspnetcdn.com/ajax/jquery.validate/1.14.0/jquery.validate.min.js"></script>
+        <script type="text/javascript" src="https://js.stripe.com/v1/"></script>
+		<!-- <link rel="stylesheet" href="http://pedalwagon.com/wp-content/themes/Divi/style.css?ver=2.1.4"> -->
+		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet" integrity="sha256-MfvZlkHCEqatNoGiOXveE8FIwMzZg4W85qfrfIFBfYc= sha512-dTfge/zgoMYpP7QbHy4gWMEGsbsdZeCXz7irItjcC3sPUFtf0kuFbDz/ixG7ArTxmDjLXDmezHubeNikyKGVyQ==" crossorigin="anonymous">
+		<link rel="icon" type="image/ico" href="//pedalwagon-api.herokuapp.com/favicon.png"/>
+        <script type="text/javascript">
+
+        	// this must be set
+        	// MANDRILL_TEMPLATE_SLUG="gift-certificate-code"
+
+        	validatePedalwagonAPIData = function(data) {
+        		console.log("validating... ", data);
+        		if ( !stringExists(data.delivery) )  { return false; }
+        		if ( !(data.delivery == "snailmail" || data.delivery == "email") ) { return false; }
+        		if (data.delivery == "snailmail") {
+        			if ( !stringExists(data.street) )  { return false; }
+        			if ( !stringExists(data.city) )  { return false; }
+        			if ( !stringExists(data.state) )  { return false; }
+        			if ( !stringExists(data.zip) )  { return false; }
+        			if ( !validateState(data.state) )  { return false; }
+        			if ( !validateZip(data.zip) )  { return false; }
+        		}
+        		if ( !stringExists(data.email) )  { return false; }
+        		if ( !validateEmail(data.email) )  { return false; }
+        		if ( !stringExists(data.name) )  { return false; }
+        		if ( !stringExists(data.stripeToken) )  { return false; }
+        		if ( !stringExists(data.coupon) )  { return false; }
+        		if ( !stringExists(data.numSeats) )  { return false; }
+        		// if ( !stringExists(data.mandrillTemplateSlug) )  { return false; }
+        		return true;
+        	}
+
+        	stringExists = function (str) {
+        		if(((typeof str != "undefined") &&
+				    (typeof str.valueOf() == "string")) &&
+				    (str.length > 0)) {
+        				return true;
+					} else {return false;}
+
+        	}
+
+			function validateZip(zip) {
+			    return /(^\d{5}$)|(^\d{5}-\d{4}$)/.test(zip);
+			}
+
+			function validateState(state) {
+			    return /^(?:A[KLRZ]|C[AOT]|D[CE]|FL|GA|HI|I[ADLN]|K[SY]|LA|M[ADEINOST]|N[CDEHJMVY]|O[HKR]|PA|RI|S[CD]|T[NX]|UT|V[AT]|W[AIVY])*$/i.test(state);
+			}
+
+			function validateEmail(email) {
+			    var re = /^([\w-]+(?:\.[\w-]+)*)@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$/i;
+			    return re.test(email);
+			}
+        </script>
+        <script type="text/javascript">
+			$(document).ready(function() {
+
+			  $('#pw-form').submit(function (e) {
+			  	e.preventDefault()
+			  	console.log("submit");
+			  	button = $("button[type=submit]")
+			  	button.attr("disabled", true);
+			  	if(!$("#pw-form").valid()) {
+			  		return button.attr("disabled", false);
+			  	}
+			    Stripe.setPublishableKey("pk_test_j3CAs3kstx0osqdoKwv655dp");
+			    Stripe.createToken({
+			      number: $('.card-number').val(),
+			      cvc: $('.card-cvc').val(),
+			      exp_month: $('.card-expiry-month').val(), 
+			      exp_year: $('.card-expiry-year').val()
+			    }, function(status, response) {
+			    
+			      if (response.error) {
+			      	console.error(response);
+			      	button.attr("disabled", false);
+			      	$("#payment-errors").html((response.error.message)).fadeIn();
+			      } else {
+			        // token contains id, last4, and card type
+			        var token = response['id'];
+			        console.log(response);
+			        console.log('Token: ' + token);
+
+					data = {
+						street: $('#street').val(),
+						city: $('#city').val(),
+						state: $('#state').val(),
+						zip: $('#zip').val(),
+						email: $('#email').val(),
+						delivery: $("select[name=delivery]").val(),
+						coupon: $("select[name=coupon]").val(),
+						stripeToken: token,
+						name: $('#name').val(),
+						numSeats: $('select[name=coupon]').find(":selected").data("seats").toString()
+						// mandrillTemplateSlug: MANDRILL_TEMPLATE_SLUG
+					}
+
+
+					if (!validatePedalwagonAPIData(data)) {
+						e.preventDefault();
+						$("#payment-errors").html("Invalid inputs. Please double check.").hide().fadeIn();
+						button.attr("disabled", false);
+						return console.log("invalid data");
+					} else {
+						$("#payment-errors").hide();
+					}
+
+
+					$.ajax({
+					  method: "POST",
+					  url: apiHost + "/discounts/create",
+					  dataType: "json",
+					  data: data
+					})
+					  .done(function() {
+					    console.log( "api success" );
+					    window.location.href = "http://pedalwagon.com/gift-certitificate-purchase-confirmation/";
+					  })
+					  .fail(function(e) {
+					  	console.log(e);
+					  	button.attr("disabled", false);
+					    console.log( "api error" );
+					    $("#payment-errors").html("Something went wrong. Please send us an email at tom@pedalwagon.com.").hide().fadeIn();
+					  })
+					  .always(function() {
+					    console.log( "api complete" );
+					  });
+			      }
+			    });
+
+			    return false;
+			  });
+
+			});
+        </script>
+
+
+		<script>
+			$(document).ready(function() {
+				// form validation
+				// $("#pw-form").validate({
+				// 	rules: {
+				// 		// these are required only when snailmail is checked
+				// 		"street": { required: '#snailmail:checked' },
+				// 		"city": { required: '#snailmail:checked' },
+				// 		"state": { required: '#snailmail:checked' },
+				// 		"zip": { required: '#snailmail:checked' }
+				// 	}
+				// });
+				// clear form
+				$("select, input").val("")
+
+				if (document.location.hostname == "localhost") {
+					console.log("pointing to pw localhost api")
+					window.apiHost = "" // blank because pointing to same directory
+				}
+				else {
+					console.log("pointing to pedalwagon-api.herokuapp.com")
+					window.apiHost = "https://pedalwagon-api.herokuapp.com"
+				}
+
+				// put price in purchase button
+			    $('select[name=coupon]').change(function(a) {
+			    	console.log($('select[name=coupon]').find(":selected").data("total"))
+			        $("#amount").html("($"+$('select[name=coupon]').find(":selected").data("total")+")")
+			    });
+
+			    // show address if selected
+			    $('select[name=delivery]').change(function() {
+			        val = $(this).val()
+			        if (val == "email") { $(".address").fadeOut() }
+			        else if (val == "snailmail") { $(".address").fadeIn()  }
+			    });
+			});
+		</script>
+		<style>
+			label.error, strong.error {
+				display:none;
+				color: red;
+			}
+		</style>
+		<style>
+			/* form styling */
+			html, body {
+				background-color: #faf7c4!important;
+			}
+			input {
+				/*background-color: #eee;*/
+				background-color: white;
+				border: none!important;
+				width: 100%!important;
+				-moz-border-radius: 0 !important;
+				-webkit-border-radius: 0 !important;
+				border-radius: 5px!important;
+				font-size: 14px;
+				color: #999 !important;
+				padding: 16px !important;
+				/*margin-bottom: 15px;*/
+				-moz-box-sizing: border-box;
+				-webkit-box-sizing: border-box;
+				box-sizing: border-box;
+			}
+			div.form-row input, div.form-row select {
+				margin-bottom: 15px;
+			}
+			#pw-form {
+				margin-top: 40px;
+			}
+			.wrapper {
+				margin-top: 40px;
+			}
+			select {
+				border-radius: 0!important;
+				border: none!important;
+				height: 52px!important;
+				color: #999 !important;
+				/*-webkit-appearance: none;*/
+			}
+			.address {
+				display: none;
+			}
+			button[type=submit] {
+				margin-top: 50px;
+			}
+		</style>
+    </head>
+    <body>
+
+        <!-- <h1>Stripe Form</h1> -->
+        <div class="container wrapper">
+	        <div class="col-xs-12 col-md-6 col-md-offset-3">
+		        <div class="header row text-center">
+		            <a href="http://www.pedalwagon.com" title="" class="" target="_blank">
+		                <img align="center" alt="Pedal Wagon Logo" src="http://s9.postimg.org/yhncui8cv/c4e476f3_80a8_4fcf_b55a_e3d1e29a0f8a.png" class>
+		            </a>
+		        </div>
+		    
+		        <form id="pw-form">
+
+					<div class="row">
+			            <div class="form-row col-xs-12 col-md-6">
+			                <input placeholder="Your Name" type="text" id="name" name="name" class="input et_pb_contact_name required" />
+			            </div>            
+			    
+			            <div class="form-row col-xs-12 col-md-6">
+			                <input placeholder="E-mail Address" type="text" id="email" name="email" class="required" />
+			            </div>          
+			        </div>
+
+
+		            <div class="form-row clearfix row">
+		            	<div class="col-xs-12 col-md-6">
+		                    <select name="delivery" class="form-control required">
+		                    	<option value="">-- Delivery Method --</option>
+		                    	<option value="email">Email</option>
+		                    	<option value="snailmail">Mail</option>
+		                    </select>
+		                </div>
+		                <div class="col-xs-12 col-md-6">
+		                    <select name="coupon" class="form-control required">
+		                    	<option value="">-- Gift Certificate Amount --</option>
+		                    	<option data-total="255" data-seats="15" value="564f3a6c926705c73c8b45f0">Full Bike - 15 seats - $255 (Regularly $395)</option>
+		                    	<option data-total="155" data-seats="8" value="564f3a6392670586418b45e7">Half Bike - 8 seats - $155 (Regularly $240)</option>
+		                    </select>
+		                </div>
+		            </div>
+
+					<div class="form-row address">
+		                <input placeholder="Street" type="text" id="street" name="street" class="" />
+		            </div>
+
+		            <div class="row address">
+						<div class="form-row col-xs-12 col-md-4">
+							<input placeholder="City" type="text" id="city" name="city" class="" />
+			            </div>
+
+			            <div class="form-row col-xs-12 col-md-4">
+			                <input placeholder="State" type="text" id="state" name="state" class="" />
+			            </div>
+
+			            <div class="form-row col-xs-12 col-md-4">
+			                <input placeholder="Zip" type="text" id="zip" name="zip" class="" />
+			            </div>
+		            </div>
+
+		    
+		    		<div class="row">
+		    			
+		    		</div>
+		            <div class="form-row">
+		                <div class="expiry-wrapper row">
+							<div class="col-xs-12 col-md-5">
+		                		<input placeholder="Card Number" type="text" maxlength="20" autocomplete="off" class="card-number stripe-sensitive required" />
+							</div>
+		                	<div class="col-xs-4 col-md-2">
+			                    <select class="form-control card-expiry-month stripe-sensitive required ">
+			                    	<option value="">MM</option>
+			                    	<option value="1">1</option>
+			                    	<option value="2">2</option>
+			                    	<option value="3">3</option>
+			                    	<option value="4">4</option>
+			                    	<option value="5">5</option>
+			                    	<option value="6">6</option>
+			                    	<option value="7">7</option>
+			                    	<option value="8">8</option>
+			                    	<option value="9">9</option>
+			                    	<option value="10">10</option>
+			                    	<option value="11">11</option>
+			                    	<option value="12">12</option>
+			                    </select>
+		                    </div>
+		                    <!-- <div class="col-md-2 text-center">
+		                    	<span class="slash"> / </span>
+		                    </div> -->
+		                    <div class="col-xs-4 col-md-2">
+			                    <select class="form-control card-expiry-year stripe-sensitive required col-md-6">
+			                    	<option value="">YY</option>
+			                    	<option value="2015">2015</option>
+			                    	<option value="2016">2016</option>
+			                    	<option value="2017">2017</option>
+			                    	<option value="2018">2018</option>
+			                    	<option value="2019">2019</option>
+			                    	<option value="2020">2020</option>
+			                    	<option value="2021">2021</option>
+			                    	<option value="2022">2022</option>
+			                    	<option value="2023">2023</option>
+			                    	<option value="2024">2024</option>
+			                    	<option value="2025">2025</option>
+			                    	<option value="2026">2026</option>
+			                    </select>
+			                </div>
+							<div class="col-xs-4 col-md-3">
+		                		<input type="text" placeholder="CVV" maxlength="4" autocomplete="off" id="cvv" class="card-cvc stripe-sensitive required"/>		            		
+			            	</div>	
+		            	</div>
+		            </div>
+		            
+
+		            <button type="submit" class="btn btn-lg btn-success btn-block" name="submit-button">
+						Purchase <span id="amount"></span>
+		            </button>
+		            <br>
+		            <p class="text-center bold">
+		            	<strong id="payment-errors" class="error bold"></strong>
+		            </p>
+		        </form>
+		    </div>
+		</div>
+    </body>
+</html>
