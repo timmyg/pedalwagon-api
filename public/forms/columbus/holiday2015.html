@@ -69,7 +69,11 @@
 			  	if(!$("#pw-form").valid()) {
 			  		return button.attr("disabled", false);
 			  	}
-			    Stripe.setPublishableKey("pk_test_j3CAs3kstx0osqdoKwv655dp");
+			  	if (document.location.hostname == "localhost") {
+			    	Stripe.setPublishableKey("pk_test_j3CAs3kstx0osqdoKwv655dp");
+				} else {
+				    Stripe.setPublishableKey("pk_live_Uz9GjKjBNiGC0btXHSm1esgn");
+				}
 			    Stripe.createToken({
 			      number: $('.card-number').val(),
 			      cvc: $('.card-cvc').val(),

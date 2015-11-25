@@ -190,7 +190,26 @@ getRenderedHTMLFromMandrill = (numSeats, couponCode, email, callback) ->
 
 sendSnailMail = (numSeats, couponCode, email, address, name, callback) ->
 	getRenderedHTMLFromMandrill numSeats, couponCode, email, (err, html) ->
-		Lob.letters.create
+		# Lob.letters.create
+		# 	description: 'Pedal Wagon Deal'
+		# 	to:
+		# 		name: name
+		# 		address_line1: address.street
+		# 		address_city: address.city
+		# 		address_state: address.state
+		# 		address_zip: address.zip
+		# 		address_country: 'US'
+		# 	from:
+		# 		name: 'Pedal Wagon'
+		# 		address_line1: '1126 Walnut St.'
+		# 		address_city: 'Cincinnati'
+		# 		address_state: 'OH'
+		# 		address_zip: '45202'
+		# 		address_country: 'US'
+		# 	file: html
+		# 	color: true
+		# 	template: false
+		Lob.postcards.create
 			description: 'Pedal Wagon Deal'
 			to:
 				name: name
@@ -206,9 +225,8 @@ sendSnailMail = (numSeats, couponCode, email, address, name, callback) ->
 				address_state: 'OH'
 				address_zip: '45202'
 				address_country: 'US'
-			file: html
-			color: true
-			template: false
+			front: "<html> <head> <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'> <title>Lob.com Sample 4x6 Postcard Front</title> <style> *, *:before, *:after {-webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; } body {width: 6.25in; height: 4.25in; margin: 0; padding: 0; background-image: url(https://s3-us-west-1.amazonaws.com/pedal-wagon/pw_logo_red_big.png); background-size: 5.25in 1.55in; background-repeat: no-repeat; background-position-y: 90px; background-position-x: 50px; } #safe-area {position: absolute; width: 5.875in; height: 3.875in; left: 0.1875in; top: 0.1875in; background-color: rgba(255,255,255,0.5); } .text {margin: 10px; font-family: 'Open Sans'; font-weight: 400; font-size: 40px; color: white; text-shadow: 2px 2px black; } </style> </head> <body> <div id='safe-area'> <!-- All text should appear within the safe area. --> <!--  <div class='text'> Gift Certificate </div> --> </div> </body> </html>"
+			back: "<html> <head> <link href='https://fonts.googleapis.com/css?family=Open+Sans' rel='stylesheet' type='text/css'> <title>Lob.com Sample 4x6 Postcard Back</title> <style> *, *:before, *:after {-webkit-box-sizing: border-box; -moz-box-sizing: border-box; box-sizing: border-box; } body {width: 6.25in; height: 4.25in; margin: 0; padding: 0; background-image: url(https://s3-us-west-1.amazonaws.com/pedal-wagon/pw_logo_light_big.png); background-size: 5.25in 1.55in; background-repeat: no-repeat; background-position-y: 90px; background-position-x: 50px; } #safe-area {position: absolute; width: 5.875in; height: 3.875in; left: 0.1875in; top: 0.1875in; background-color: rgba(255,255,255,0.5); } #ink-free {position: absolute; width: 3.5in; height: 2.7in; right: -0.1875in; bottom: -0.1875in; background-color: white; } .text {margin: 10px; width: 200px; font-family: 'Open Sans'; font-weight: 400; font-size: 20px; color: gray; /*text-shadow: 2px 2px black;*/ } </style> </head> <body> <div id='safe-area'> <!-- All text should appear without the safe area. --> <div class='text' style='text-align: center;'> <p>Voucher Code:</p> <strong style='color: #C3493C;font-weight:700;'>"+couponCode+"</strong> <br><br><p style='margin: 0px;font-size: 18px;line-height: normal;font-family: Helvetica;text-align: center;'>This code&nbsp;is good for "+numSeats+" seats on a 2-hour</p> <p style='margin: 0px;font-size: 18px;line-height: normal;font-family: Helvetica;color: #C3493C;text-align: center;'>Pedal Wagon pubcrawl anytime in 2016!</p> </div> <div id='ink-free'> <!-- Do not place any artwork or text in the ink free area. Address and postage will be automatically printed here. Delete this div before submitting your postcard! --> </div> </div> </body> </html>"
 		, (err, res) ->
 			console.error "lob error", err if err
 			console.log "lob:", res if res
