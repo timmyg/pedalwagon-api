@@ -70,8 +70,10 @@
 			  		return button.attr("disabled", false);
 			  	}
 			  	if (document.location.hostname == "localhost") {
+			  		console.log("set dev stripe key")
 			    	Stripe.setPublishableKey("pk_test_j3CAs3kstx0osqdoKwv655dp");
 				} else {
+					console.log("set prof stripe key")
 				    Stripe.setPublishableKey("pk_live_Uz9GjKjBNiGC0btXHSm1esgn");
 				}
 			    Stripe.createToken({
