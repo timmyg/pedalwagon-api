@@ -29,6 +29,7 @@ module.exports =
 				if err
 					# res.send {message: "Error with stripe charge."}
 					# return res.statusCode = 400
+					console.error err if err
 					return res.sendStatus(403)
 				generatedCouponCode = getRandomCode()
 				createCoupon data.couponId, generatedCouponCode, (err, result) ->
