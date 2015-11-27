@@ -26,6 +26,10 @@ module.exports =
 		getCouponAmount data.couponId, (err, result) ->
 			data.couponName = result.name
 			chargeCard data.email, data.stripeToken, result.amount, data, (err, charge) ->
+				if err
+					# res.send {message: "Error with stripe charge."}
+					# return res.statusCode = 400
+					return res.sendStatus(403)
 				generatedCouponCode = getRandomCode()
 				createCoupon data.couponId, generatedCouponCode, (err, result) ->
 					sendCouponCode data.delivery, data.numSeats, generatedCouponCode, data.email, data.address, data.name, (err, result) ->
